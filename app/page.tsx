@@ -136,36 +136,37 @@ export default function Home() {
         .catch((err) => console.error(err))
     );
   };
+  useEffect(() => {
+    const bodyStr = JSON.stringify({
+      messages: [
+        {
+          role: 'user',
+          content: '作为一名父亲，如何和女儿进行沟通，给出4个字的回答',
+        },
+      ],
+    });
 
-  const bodyStr = JSON.stringify({
-    messages: [
-      {
-        role: 'user',
-        content: '作为一名父亲，如何和女儿进行沟通，给出4个字的回答',
+    const a = fetchStream('http://localhost:8701/uv1/chat2', {
+      method: 'POST',
+      headers: {
+        accept: 'text/event-stream',
+        'Content-Type': 'application/json',
       },
-    ],
-  });
-
-  const a = fetchStream('http://localhost:8701/uv1/chat2', {
-    method: 'POST',
-    headers: {
-      accept: 'text/event-stream',
-      'Content-Type': 'application/json',
-    },
-    body: bodyStr,
-    onmessage: (res: string) => {
-      // todo
-      // const queue = encoder.encode(res);
-      // setCurrentMessage((r: any) => r + res);
-      console.log(res);
-    },
-    // onclose: (res: string) => {
-    //   // todo
-    //   debugger;
-    //   setCurrentMessage((r: any) => r + '已关闭');
-    //   console.log(res);
-    // },
-  });
+      body: bodyStr,
+      onmessage: (res: string) => {
+        // todo
+        // const queue = encoder.encode(res);
+        setCurrentMessage((r: any) => r + res);
+        console.log(res);
+      },
+      // onclose: (res: string) => {
+      //   // todo
+      //   debugger;
+      //   setCurrentMessage((r: any) => r + '已关闭');
+      //   console.log(res);
+      // },
+    });
+  }, []);
 
   // console.log(a);
   debugger;
