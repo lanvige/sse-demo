@@ -1,12 +1,10 @@
 'use client';
 
 import { MutableRefObject, memo, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
 
 import Image from 'next/image';
 import styles from './page.module.css';
-
-import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
-import { debug } from 'console';
 
 export default function Home() {
   const [currentMessage, setCurrentMessage] = useState<string>('');
@@ -41,15 +39,13 @@ export default function Home() {
       if (done) {
         debugger;
         // controller.close();
-        debugger;
         onclose?.();
         return;
       }
 
       // 替换旧的方法，用一个库来处理这个
-      // 这是一个 callback 方法，会在调用 feed 后，进行分行处理，这里的参数是一个单个的 event
-      const parseCallback = async (event: ParsedEvent | ReconnectInterval) => {
-        // debugger;
+      const parseCallback = async (event: any) => {
+        debugger;
         // 只处理 event 类型
         if (event.type === 'event') {
           const data = event.data;
@@ -68,23 +64,22 @@ export default function Home() {
 
           try {
             const json = JSON.parse(data);
-            if (json.content) {
+            if (json.choices) {
               // debugger;
-              // const text = json.choices[0].delta.content;
-              const text = json.content;
+              const text = json.choices[0].delta.content;
+              // const text = json.content;
               // debugger;
               onmessage?.(text);
 
               // 将下一个数据块排队到我们的目标流中
               // const queue = encoder.encode(text);
               // controller.enqueue(queue);
-              // if (eventId === '[DONE]') {
-              //   // const queue = encoder.encode(text);
-              //   // controller.enqueue(queue);
-              //   // 然后再次调用 pump() 函数去读取下一个分块。
-              //   // await pump(controller, reader);
-              //   return;
-              // }
+              if (eventId === '[DONE]') {
+                const queue = encoder.encode(text);
+                controller.enqueue(queue);
+                await pump(controller, reader);
+                return;
+              }
             }
           } catch (err) {
             debugger;
@@ -94,7 +89,6 @@ export default function Home() {
       };
 
       const parser = createParser(parseCallback);
-      // feed 的参数是一个或多个 event，它有一个 parseEventStreamLine 的方法来处理单个 event，每个 event 都会执行 callback
       await parser.feed(decoder.decode(value));
 
       // for await (const chunk of value) {
@@ -103,72 +97,88 @@ export default function Home() {
       //   // debugger;
       // }
 
+      debugger;
       const b = decoder.decode(value);
-      controller.enqueue(value);
-      // 然后再次调用 pump() 函数去读取下一个分块。
-      await pump(controller, reader);
+      console.log(b);
+      // controller.enqueue(value);
+      // await pump(controller, reader);
     };
 
     // https://developer.mozilla.org/zh-CN/docs/Web/API/Streams_API/Using_readable_streams
     // 发送请求，使用参数中的 header
-    return (
-      fetch(url, otherParams)
-        .then((response: any) => {
-          // 以 ReadableStream 解析数据
-          const reader = response.body.getReader();
+    fetch(url, otherParams).then((response: any) => {
+      debugger;
+      // 以 ReadableStream 解析数据
+      const reader = response.body.getReader();
 
-          // 创建一个 ReadableStream，并调用 start 立即执行
-          const stream = new ReadableStream({
-            start(controller) {
-              pump(controller, reader);
-            },
-          });
+      const stream = new ReadableStream({
+        async start(controller) {
+          const onParse = (event: ParsedEvent | ReconnectInterval) => {
+            debugger;
+            if (event.type === 'event') {
+              const data = event.data;
+              if (data === '[DONE]') {
+                controller.close();
+                onclose?.();
+                return;
+              }
 
-          return stream;
-        })
-        // 从流中创建一个新的响应
-        // Create a new response out of the stream
-        .then((stream) => {
-          // 返对一个对象
-          new Response(stream, { headers: { 'Content-Type': 'text/html' } }).text();
-        })
-        // .then((response) => response.blob())
-        .catch((err) => console.error(err))
-    );
+              try {
+                const json = JSON.parse(data);
+                const text = json.choices[0].delta.content;
+                onmessage?.(text);
+                const queue = encoder.encode(text);
+                controller.enqueue(queue);
+              } catch (e) {
+                controller.error(e);
+              }
+            }
+          };
+
+          const bbb = reader.getReader();
+          debugger;
+
+          const parser = createParser(onParse);
+
+          for await (const chunk of reader as any) {
+            debugger;
+            parser.feed(decoder.decode(chunk));
+          }
+        },
+      });
+
+      return stream;
+    });
   };
 
   const bodyStr = JSON.stringify({
-    messages: [
-      {
-        role: 'user',
-        content: '作为一名父亲，如何和女儿进行沟通，给出4个字的回答',
-      },
-    ],
+    contents: ['作为一名父亲，如何和女儿进行沟通，给出4个字的回答'],
+    stream: true,
   });
 
-  const a = fetchStream('http://localhost:8701/uv1/chat2', {
+  debugger;
+  fetchStream('https://aitoolapi.axiig.com/chat', {
     method: 'POST',
     headers: {
       accept: 'text/event-stream',
       'Content-Type': 'application/json',
+      Authorization: 'Bearer t',
     },
     body: bodyStr,
     onmessage: (res: string) => {
       // todo
       // const queue = encoder.encode(res);
-      // setCurrentMessage((r: any) => r + res);
+      // debugger;
+      setCurrentMessage((r: any) => r + res);
       console.log(res);
     },
-    // onclose: (res: string) => {
-    //   // todo
-    //   debugger;
-    //   setCurrentMessage((r: any) => r + '已关闭');
-    //   console.log(res);
-    // },
+    onclose: (res: string) => {
+      // todo
+      debugger;
+      setCurrentMessage((r: any) => r + '已关闭');
+      console.log(res);
+    },
   });
-
-  // console.log(a);
-  debugger;
 
   // ================== res
 
