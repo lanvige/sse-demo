@@ -50,7 +50,7 @@ export default function Home() {
               -&gt;
             </span>
           </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>通过 chat 接口数据获取，目前用的是 ReadableStream</p>
+          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>通过 chat 接口数据获取，目前用的是 ReadableStream + eventsource-parser</p>
         </Link>
       </div>
     </main>
