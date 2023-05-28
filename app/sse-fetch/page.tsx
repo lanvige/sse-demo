@@ -14,6 +14,8 @@ export default function Home() {
   const handleSend = useCallback(async () => {
     const decoder = new TextDecoder('utf-8');
 
+    const api: string = process.env.NEXT_PUBLIC_UNICHAT_API!;
+
     try {
       const bodyStr = JSON.stringify({
         messages: [
@@ -26,7 +28,7 @@ export default function Home() {
 
       const abortController = new AbortController();
 
-      const response = await fetch('http://localhost:8701/uv1/sse/fetch', {
+      const response = await fetch(api, {
         method: 'POST',
         headers: {
           accept: 'text/event-stream',
@@ -38,6 +40,8 @@ export default function Home() {
       // 这个时候，fetch 接收到的是 stream
       const reader = response.body?.getReader();
 
+      let text = '';
+
       while (true) {
         const { value, done } = await reader?.read()!;
 
@@ -48,10 +52,12 @@ export default function Home() {
 
         const a = decoder.decode(value);
         console.log('Received', a);
+        text += a;
+
+        setCurrentMessage(text);
       }
 
       console.log(response);
-      debugger;
 
       // 如果请求错误
       if (!response?.ok) {
@@ -79,7 +85,12 @@ export default function Home() {
   // ================== res
 
   return (
-    <main className={styles.main}>
+    <main>
+      <h2 className={`text-2xl`}>sse-fetch</h2>
+      <div>这里用的是 fetch + whie 实现的接口，没有对数据进行过多的处理</div>
+      <br />
+      <br />
+
       <div>{currentMessage}</div>
     </main>
   );
