@@ -1,181 +1,113 @@
-'use client';
-
-import { MutableRefObject, memo, useCallback, useContext, useEffect, useRef, useState } from 'react';
-
-import Image from 'next/image';
-import styles from './page.module.css';
-
-import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
-import { debug } from 'console';
+import Image from 'next/image'
 
 export default function Home() {
-  const [currentMessage, setCurrentMessage] = useState<string>('');
-
-  const encoder = new TextEncoder();
-  const decoder = new TextDecoder();
-
-  const fetchStream = async (url: string, params: any) => {
-    const { onmessage, onclose, ...otherParams } = params;
-
-    // ????
-    const pump = async (controller: any, reader: any) => {
-      // 调用 read() ，它返回一个包含 results 对象的 Promise ——它包含我们读取的结果，形式为 { done, value }
-      const { value, done } = await reader.read();
-
-      debugger;
-
-      // if (done) {
-      //   controller.close();
-      //   onclose?.();
-      // } else {
-      //   const s = Uint8ArrayToString(value);
-      //   const s2 = decoder.decode(value);
-      //   debugger;
-      //   await onmessage?.(s);
-      //   // Enqueue the next data chunk into our target stream
-      //   controller.enqueue(value);
-      //   pump(controller, reader);
-      // }
-
-      // ??? Uncaught (in promise) TypeError: Failed to execute 'close' on 'ReadableStreamDefaultController': Cannot close a readable stream that has already been requested to be closed
-      if (done) {
-        debugger;
-        // controller.close();
-        debugger;
-        onclose?.();
-        return;
-      }
-
-      // 替换旧的方法，用一个库来处理这个
-      // 这是一个 callback 方法，会在调用 feed 后，进行分行处理，这里的参数是一个单个的 event
-      const parseCallback = async (event: ParsedEvent | ReconnectInterval) => {
-        // debugger;
-        // 只处理 event 类型
-        if (event.type === 'event') {
-          const data = event.data;
-          const eventId = event.id;
-
-          if (eventId === '[TOKENS]') {
-            return;
-          }
-
-          // debugger;
-
-          if (data === '[DONE]') {
-            // controller.close();
-            return;
-          }
-
-          try {
-            const json = JSON.parse(data);
-            if (json.content) {
-              // debugger;
-              // const text = json.choices[0].delta.content;
-              const text = json.content;
-              // debugger;
-              onmessage?.(text);
-
-              // 将下一个数据块排队到我们的目标流中
-              // const queue = encoder.encode(text);
-              // controller.enqueue(queue);
-              // if (eventId === '[DONE]') {
-              //   // const queue = encoder.encode(text);
-              //   // controller.enqueue(queue);
-              //   // 然后再次调用 pump() 函数去读取下一个分块。
-              //   // await pump(controller, reader);
-              //   return;
-              // }
-            }
-          } catch (err) {
-            debugger;
-            controller.error(err);
-          }
-        }
-      };
-
-      const parser = createParser(parseCallback);
-      // feed 的参数是一个或多个 event，它有一个 parseEventStreamLine 的方法来处理单个 event，每个 event 都会执行 callback
-      await parser.feed(decoder.decode(value));
-
-      // for await (const chunk of value) {
-      //   // parser.feed(decoder.decode(chunk));
-      //   // onmessage?.(chunk);
-      //   // debugger;
-      // }
-
-      const b = decoder.decode(value);
-      controller.enqueue(value);
-      // 然后再次调用 pump() 函数去读取下一个分块。
-      await pump(controller, reader);
-    };
-
-    // https://developer.mozilla.org/zh-CN/docs/Web/API/Streams_API/Using_readable_streams
-    // 发送请求，使用参数中的 header
-    return (
-      fetch(url, otherParams)
-        .then((response: any) => {
-          // 以 ReadableStream 解析数据
-          const reader = response.body.getReader();
-
-          // 创建一个 ReadableStream，并调用 start 立即执行
-          const stream = new ReadableStream({
-            start(controller) {
-              pump(controller, reader);
-            },
-          });
-
-          return stream;
-        })
-        // 从流中创建一个新的响应
-        // Create a new response out of the stream
-        .then((stream) => {
-          // 返对一个对象
-          new Response(stream, { headers: { 'Content-Type': 'text/html' } }).text();
-        })
-        // .then((response) => response.blob())
-        .catch((err) => console.error(err))
-    );
-  };
-  useEffect(() => {
-    const bodyStr = JSON.stringify({
-      messages: [
-        {
-          role: 'user',
-          content: '作为一名父亲，如何和女儿进行沟通，给出4个字的回答',
-        },
-      ],
-    });
-
-    const a = fetchStream('http://localhost:8701/uv1/chat2', {
-      method: 'POST',
-      headers: {
-        accept: 'text/event-stream',
-        'Content-Type': 'application/json',
-      },
-      body: bodyStr,
-      onmessage: (res: string) => {
-        // todo
-        // const queue = encoder.encode(res);
-        setCurrentMessage((r: any) => r + res);
-        console.log(res);
-      },
-      // onclose: (res: string) => {
-      //   // todo
-      //   debugger;
-      //   setCurrentMessage((r: any) => r + '已关闭');
-      //   console.log(res);
-      // },
-    });
-  }, []);
-
-  // console.log(a);
-  debugger;
-
-  // ================== res
-
   return (
-    <main className={styles.main}>
-      <div>{currentMessage}</div>
+    <main className="flex min-h-screen flex-col items-center justify-between p-24">
+      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
+        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
+          Get started by editing&nbsp;
+          <code className="font-mono font-bold">src/app/page.tsx</code>
+        </p>
+        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
+          <a
+            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
+            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            By{' '}
+            <Image
+              src="/vercel.svg"
+              alt="Vercel Logo"
+              className="dark:invert"
+              width={100}
+              height={24}
+              priority
+            />
+          </a>
+        </div>
+      </div>
+
+      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px]">
+        <Image
+          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
+          src="/next.svg"
+          alt="Next.js Logo"
+          width={180}
+          height={37}
+          priority
+        />
+      </div>
+
+      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
+        <a
+          href="https://beta.nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h2 className={`mb-3 text-2xl font-semibold`}>
+            Docs{' '}
+            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+              -&gt;
+            </span>
+          </h2>
+          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
+            Find in-depth information about Next.js features and API.
+          </p>
+        </a>
+
+        <a
+          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800 hover:dark:bg-opacity-30"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h2 className={`mb-3 text-2xl font-semibold`}>
+            Learn{' '}
+            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+              -&gt;
+            </span>
+          </h2>
+          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
+            Learn about Next.js in an interactive course with&nbsp;quizzes!
+          </p>
+        </a>
+
+        <a
+          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h2 className={`mb-3 text-2xl font-semibold`}>
+            Templates{' '}
+            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+              -&gt;
+            </span>
+          </h2>
+          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
+            Explore the Next.js 13 playground.
+          </p>
+        </a>
+
+        <a
+          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h2 className={`mb-3 text-2xl font-semibold`}>
+            Deploy{' '}
+            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+              -&gt;
+            </span>
+          </h2>
+          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
+            Instantly deploy your Next.js site to a shareable URL with Vercel.
+          </p>
+        </a>
+      </div>
     </main>
-  );
+  )
 }
