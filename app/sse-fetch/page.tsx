@@ -1,7 +1,7 @@
 'use client';
 
 import { MutableRefObject, memo, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { fetchStream } from '@/app/utils/chat';
+import { fetchStream } from '@/app/utils/fetchStream';
 
 import styles from './page.module.css';
 

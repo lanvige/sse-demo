@@ -1,4 +1,4 @@
 export default interface RequestInit2 extends RequestInit {
-  onmessage(text: string): void;
-  onclose(): void;
+  onMessage(text: string): void;
+  onClose(): void;
 }

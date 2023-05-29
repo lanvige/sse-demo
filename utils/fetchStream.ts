@@ -1,8 +1,8 @@
-import RequestInit2 from './requestInit';
+import RequestInit from './requestInit';
 import { ParsedEvent, ReconnectInterval, createParser } from 'eventsource-parser';
 
-const fetchStream = async (url: string, params: RequestInit2): Promise<Response | void> => {
-  const { onmessage, onclose, ...otherParams } = params;
+const fetchStream = async (url: string, params: RequestInit): Promise<Response | void> => {
+  const { onMessage, onClose, ...otherParams } = params;
 
   const encoder = new TextEncoder();
   const decoder = new TextDecoder('utf-8');
@@ -15,7 +15,7 @@ const fetchStream = async (url: string, params: RequestInit2): Promise<Response 
     // Uncaught (in promise) TypeError: Failed to execute 'close' on 'ReadableStreamDefaultController': Cannot close a readable stream that has already been requested to be closed
     if (done) {
       // controller.close();
-      onclose?.();
+      onClose?.();
       return;
     }
 
@@ -42,7 +42,7 @@ const fetchStream = async (url: string, params: RequestInit2): Promise<Response 
           if (json.content) {
             // const text = json.choices[0].delta.content;
             const text = json.content;
-            onmessage?.(text);
+            onMessage?.(text);
 
             // 将下一个数据块排队到我们的目标流中
             // const queue = encoder.encode(text);
