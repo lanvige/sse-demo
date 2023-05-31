@@ -1,7 +1,6 @@
 'use client';
 
 import { MutableRefObject, memo, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { fetchStream } from '@/app/utils/fetchStream';
 
 import styles from './page.module.css';
 
@@ -31,30 +30,41 @@ export default function Home() {
       const response = await fetch(api, {
         method: 'POST',
         headers: {
-          accept: 'text/event-stream',
           'Content-Type': 'application/json',
+          accept: 'text/event-stream',
         },
-        body: bodyStr,
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [],
+          stream: true,
+        }),
       });
 
-      // 这个时候，fetch 接收到的是 stream
       const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let packed;
 
       let text = '';
+      while (!(packed = await reader?.read()!).done) {
+        let result = decoder.decode(packed.value); // uint8array转字符串
+        const lines = result.trim().split('\n\n'); // 拆分返回的行
+        for (let i in lines) {
+          let line = lines[i].substring(6); // 去掉开头的 data:
+          if (line === '[DONE]') {
+            // 结束
+            break;
+          }
 
-      while (true) {
-        const { value, done } = await reader?.read()!;
+          debugger
+          let data = JSON.parse(line);
+          let delta = data['choices'][0]['delta'];
 
-        if (done) {
-          debugger;
-          break;
+          text += delta;
+
+          setCurrentMessage(text);
+
+          // 后面就是自己的业务逻辑了...
         }
-
-        const a = decoder.decode(value);
-        console.log('Received', a);
-        text += a;
-
-        setCurrentMessage(text);
       }
 
       console.log(response);

@@ -1,7 +1,6 @@
 'use client';
 
 import { MutableRefObject, memo, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { fetchStream } from '@/app/utils/fetchStream';
 
 import styles from './page.module.css';
 
@@ -14,6 +13,7 @@ export default function Home() {
   const [currentMessage, setCurrentMessage] = useState<string>('');
 
   const handleSend = useCallback(async () => {
+    debugger;
     const decoder = new TextDecoder('utf-8');
 
     const api: string = process.env.NEXT_PUBLIC_UNICHAT_API!;
@@ -23,7 +23,7 @@ export default function Home() {
         messages: [
           {
             role: 'user',
-            content: '作为一名父亲，如何和女儿进行沟通，给出4个字的回答',
+            content: '作为一名父亲，如何和女儿进行沟通，给出80个字的回答',
           },
         ],
       });
@@ -32,8 +32,17 @@ export default function Home() {
       class FatalError extends Error {}
 
       let text: string = '';
-      const result = fetchEventSource(api, {
+
+      const abortController = new AbortController();
+
+      const eventSource = fetchEventSource(api, {
         method: 'POST',
+        body: bodyStr,
+        signal: abortController.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          accept: 'text/event-stream',
+        },
         async onopen(response) {
           const type = response.headers.get('content-type');
           const type2 = 'text/event-stream;charset=UTF-8';
@@ -49,32 +58,54 @@ export default function Home() {
           }
         },
         onmessage(msg) {
-          debugger;
+          // debugger;
           // if the server emits an error message, throw an exception
           // so it gets handled by the onerror callback below:
           if (msg.event === 'FatalError') {
             throw new FatalError(msg.data);
           }
 
-          text += msg.data;
+          const json = JSON.parse(msg.data);
+          debugger;
 
-          setCurrentMessage(text);
+          if (json.data == '[DONE]') {
+            abortController.abort();
+            console.log('我是结束！！');
+            return;
+          }
+
+          // debugger;
+          if (json.content) {
+            text += json.content;
+
+            console.log(text);
+            setCurrentMessage(text);
+          }
         },
         onclose() {
+          debugger;
           // if the server closes the connection unexpectedly, retry:
           console.log('closed');
 
           text += '\n结束了';
           setCurrentMessage(text);
           // throw new RetriableError();
+
+          console.log('close');
+          abortController.abort();
+
+          // eventSource.close();
         },
         onerror(err) {
-          if (err instanceof FatalError) {
-            throw err; // rethrow to stop the operation
-          } else {
-            // do nothing to automatically retry. You can also
-            // return a specific retry interval here.
-          }
+          debugger;
+          // if (err instanceof FatalError) {
+          //   throw err; // rethrow to stop the operation
+          // } else {
+          //   // do nothing to automatically retry. You can also
+          //   // return a specific retry interval here.
+          // }
+
+          abortController.abort();
         },
       });
     } catch (err) {
